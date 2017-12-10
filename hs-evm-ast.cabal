@@ -1,0 +1,34 @@
+name:                hs-evm-ast
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/githubuser/hs-evm-ast#readme
+license:             MIT
+license-file:        LICENSE
+author:              Max Taldykin
+maintainer:          jorpic@gmail.com
+copyright:           2017 Max Taldykin
+category:            Compiler
+build-type:          Simple
+cabal-version:       >=1.10
+extra-source-files:  README.md
+
+executable hs-evm-ast
+  other-modules:
+    EVM.Instructions,
+    EVM.InstructionsTH
+
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  build-depends:
+    base >= 4.7 && < 5,
+    bytestring,
+    containers,
+    template-haskell,
+    largeword
+
+  default-extensions:
+    LambdaCase,
+    OverloadedStrings
+
