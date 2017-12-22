@@ -1,0 +1,31 @@
+name:        evm-bytecode
+version:     "0.0"
+synopsis:    Parse Ethereum VM bytecode
+license:     MIT
+author:      Max Taldykin
+maintainer:  <jorpic@gmail.com>
+stability:   Not stable at all
+category:    Compiler
+
+dependencies:
+  - base
+  - bytestring
+  - containers
+  - template-haskell
+  - largeword
+
+default-extensions:
+  - LambdaCase
+  - OverloadedStrings
+  - QuasiQuotes
+
+ghc-options:
+  - -Wall
+  - -threaded
+  - -O2
+  - -funbox-strict-fields
+
+executables:
+  evm-bytecode:
+    source-dirs: src
+    main: Main.hs

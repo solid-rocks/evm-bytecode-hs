@@ -4,7 +4,6 @@ module EVM.Instructions where
 import           Prelude hiding (Ordering(..))
 import           Data.Int (Int64)
 import           Data.Word
-import           Data.List (foldl')
 import           Data.Map (Map)
 import qualified Data.Map as Map
 import           Data.ByteString.Lazy (ByteString)
@@ -42,7 +41,7 @@ readProgram str = go
     go offset
       | offset < 0 || offset >= LB.length str = []
       | otherwise = case readOne str offset of
-        op@(INVALID err) -> [op]
+        op@(INVALID _err) -> [op]
         op -> op : go (offset + size op)
 
 

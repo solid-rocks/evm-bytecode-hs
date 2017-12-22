@@ -4,7 +4,7 @@ module EVM.InstructionsTH where
 
 import           Data.Int (Int64)
 import           Data.Word
-import           Data.LargeWord (Word256, LargeKey)
+import           Data.LargeWord (Word256)
 import           Data.Bits
 import           Data.List (foldl')
 import qualified Data.ByteString.Lazy as LBS
@@ -112,9 +112,9 @@ generateInstructionsData nm
     : map (\x -> normalC (mkName $ name x) (args x))
       descriptions
     )
-    (cxt [conT ''Show, conT ''Eq])
+    [derivClause Nothing [conT ''Show, conT ''Eq]]
   where
-    strictArg = bangType (bang sourceUnpack sourceStrict) . conT
+    strictArg = bangType (bang noSourceUnpackedness sourceStrict) . conT
     args i = case variants i of
       [] -> map strictArg $ arguments i
       _  -> map strictArg $ ''Int : arguments i
@@ -147,16 +147,16 @@ generateInstructionCons = do
   -- read argument from bytestring (for PUSH)
   addArg <- runQ [e|
       \fn sz bytes offset -> either $(conE $ mkName "INVALID") fn
-        $ readWordFromLBS (fromIntegral sz) bytes offset
+        $ readWordFromLBS sz bytes offset
     |]
   skipArg <- runQ [e| const . const |]
 
   return $ ListE
-    [ TupE [LitE $ IntegerL instrCode, exp]
+    [ TupE [LitE $ IntegerL instrCode, expr]
     | i <- descriptions
     , (instrCode, variant, argSize) <- unfoldVariants i
     , let int = LitE . IntegerL
-    , let exp -- add variant and argument to constructor
+    , let expr -- add variant and argument to constructor
             = maybe (AppE skipArg) (\sz e -> AppE (AppE addArg e) (int sz)) argSize
             $ maybe id (\v e -> AppE e (int v)) variant
             $ ctr i
