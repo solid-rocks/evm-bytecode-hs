@@ -108,7 +108,7 @@ generateInstructionsData nm
     (mkName nm) -- name
     []          -- type variables
     Nothing     -- kind
-    ( normalC (mkName "INVALID") [strictArg ''Word8]
+    ( normalC (mkName "INVALID") [strictArg ''String]
     : map (\x -> normalC (mkName $ name x) (args x))
       descriptions
     )
@@ -120,48 +120,44 @@ generateInstructionsData nm
       _  -> map strictArg $ ''Int : arguments i
 
 
-data ParserError
-  = PositionIsOutOfRange
-  deriving Show
+readWordFromLBS :: Int64 -> LBS.ByteString -> Int64 -> Either String Word256
+readWordFromLBS sz bs ix
+  | ix < 0 || ix + sz > LBS.length bs = Left "Not enough bytes for argument"
+  | otherwise = Right
+    $ foldl' (\res b -> unsafeShiftL res 8 .|. fromIntegral b) 0
+    $ map (LBS.index bs) [ix .. ix + sz - 1]
 
 
-readWordFromLBS :: LBS.ByteString -> Int64 -> Int -> Word256
-readWordFromLBS bs ix sz
-  = foldl' (\res b -> unsafeShiftL res 8 .|. fromIntegral b) 0
-  $ map (LBS.index bs) [ix .. ix + fromIntegral sz - 1]
 
-
-generateInstructionParser :: Q Exp
-generateInstructionParser = do
-  bs <- newName "bytecode"
-  ix <- newName "offset"
-
+generateInstructionCons :: Q Exp
+generateInstructionCons = do
   -- make constructor from instruction desc
   let ctr = ConE . mkName . name
 
   -- unfold instruction descriptions like PUSH*, DUP*
   let unfoldVariants i = case variants i of
-        [] -> [(fromIntegral $ code i, ctr i, 0)]
+        [] -> [(fromIntegral $ code i, Nothing, Nothing)]
         vs ->
-          [(ix + fromIntegral (code i)
-           ,AppE (ctr i) (LitE $ IntegerL  v)
-           ,v)
-          | (ix, v) <- zip [0..] vs
+          [ (c, Just variant, argSize)
+          | (c, variant) <- zip [fromIntegral $ code i ..] vs
+          -- for PUSH `argSize == variant`
+          , let argSize = if null $ arguments i then Nothing else Just variant
           ]
 
-  let matchCode c exp = Match (LitP $ IntegerL c) (NormalB exp) []
-  readWord <- runQ [e| readWordFromLBS $(varE bs) ($(varE ix) + 1) |]
+  -- read argument from bytestring (for PUSH)
+  addArg <- runQ [e|
+      \fn sz bytes offset -> either $(conE $ mkName "INVALID") fn
+        $ readWordFromLBS (fromIntegral sz) bytes offset
+    |]
+  skipArg <- runQ [e| const . const |]
 
-  let caseMatches =
-        [ matchCode c $ TupE [exp', LitE $ IntegerL $ argSz + 1]
-        | i <- descriptions
-        , (c, exp, argSz) <- unfoldVariants i
-        -- add argument to PUSH
-        , let exp' = if null $ arguments i
-              then exp
-              else AppE exp (AppE readWord (LitE $ IntegerL $ argSz))
-        ]
-
-  caseExp <- runQ [e| LBS.index $(varE bs) $(varE ix)|]
-  return
-    $ LamE [VarP bs, VarP ix] $ CaseE caseExp caseMatches
+  return $ ListE
+    [ TupE [LitE $ IntegerL instrCode, exp]
+    | i <- descriptions
+    , (instrCode, variant, argSize) <- unfoldVariants i
+    , let int = LitE . IntegerL
+    , let exp -- add variant and argument to constructor
+            = maybe (AppE skipArg) (\sz e -> AppE (AppE addArg e) (int sz)) argSize
+            $ maybe id (\v e -> AppE e (int v)) variant
+            $ ctr i
+    ]

@@ -3,4 +3,4 @@ module Main where
 import EVM.Instructions
 
 main :: IO ()
-main = print (INVALID 0x12)
+main = mapM_ print $ readProgram "\x61\x0f\x00\x00" 0
