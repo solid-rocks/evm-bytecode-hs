@@ -43,8 +43,3 @@ readProgram str = go
       | otherwise = case readOne str offset of
         op@(INVALID _err) -> [op]
         op -> op : go (offset + size op)
-
-
--- "Offset is out of range: " ++ show offset
--- "Not enough bytes: 0x" ++ showHex bytes
-

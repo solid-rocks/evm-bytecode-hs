@@ -5,7 +5,7 @@ license:     MIT
 author:      Max Taldykin
 maintainer:  <jorpic@gmail.com>
 stability:   Not stable at all
-category:    Compiler
+category:    Language
 
 dependencies:
   - base
@@ -21,11 +21,13 @@ default-extensions:
 
 ghc-options:
   - -Wall
+  - -Werror
   - -threaded
   - -O2
   - -funbox-strict-fields
 
-executables:
-  evm-bytecode:
-    source-dirs: src
-    main: Main.hs
+library:
+  source-dirs:
+    - src/
+  exposed-modules:
+    - EVM.Instructions
